@@ -7,9 +7,8 @@ import (
 	"log"
 	"os"
 
-	pbf "github.com/KapitanD/shipping-service/consignment"
+	pbf "github.com/KapitanD/shipping-service/shippy-service-consignment/proto/consignment"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
 
@@ -57,7 +56,7 @@ func main() {
 
 	log.Printf("Created: %t", r.Created)
 
-	getAll, err := client.GetConsignments(context.Background(), &pb.GetRequest{})
+	getAll, err := client.GetConsignments(context.Background(), &pbf.GetRequest{})
 	if err != nil {
 		log.Fatalf("Could not list consignments: %v", err)
 	}
