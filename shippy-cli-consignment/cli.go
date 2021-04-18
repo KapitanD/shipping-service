@@ -1,66 +1,60 @@
+// shippy/shippy-cli-consignment/main.go
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"log"
 	"os"
 
-	pbf "github.com/KapitanD/shipping-service/shippy-service-consignment/proto/consignment"
+	"context"
 
-	"google.golang.org/grpc"
+	pb "github.com/KapitanD/shipping-service/shippy-service-consignment/proto/consignment"
+	micro "github.com/micro/go-micro/v2"
 )
 
 const (
-	address         = "localhost:50051"
 	defaultFilename = "consignment.json"
 )
 
-// function parse gotten file
-func parseFile(file string) (*pbf.Consignment, error) {
-	var consignment *pbf.Consignment
+func parseFile(file string) (*pb.Consignment, error) {
+	var consignment *pb.Consignment
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 	json.Unmarshal(data, &consignment)
-	return consignment, nil
+	return consignment, err
 }
 
 func main() {
-	// Estable connect to server
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Can not connect: %v", err)
-	}
-	defer conn.Close()
-	client := pbf.NewShippingServiceClient(conn)
+	service := micro.NewService(micro.Name("shippy.cli.consignment"))
+	service.Init()
 
-	// Pass consignment.json in processing,
-	// else get path to file from commad line args
+	client := pb.NewShippingService("shippy.service.consignment", service.Client())
+
+	// Contact the server and print out its response.
 	file := defaultFilename
 	if len(os.Args) > 1 {
 		file = os.Args[1]
 	}
 
 	consignment, err := parseFile(file)
+
 	if err != nil {
-		log.Fatalf("Impossible to parse file: %v", err)
+		log.Fatalf("Could not parse file: %v", err)
 	}
 
 	r, err := client.CreateConsignment(context.Background(), consignment)
 	if err != nil {
-		log.Fatalf("Can not create: %v", err)
+		log.Fatalf("Could not greet: %v", err)
 	}
-
 	log.Printf("Created: %t", r.Created)
 
-	getAll, err := client.GetConsignments(context.Background(), &pbf.GetRequest{})
+	getAll, err := client.GetConsignments(context.Background(), &pb.GetRequest{})
 	if err != nil {
 		log.Fatalf("Could not list consignments: %v", err)
 	}
-
 	for _, v := range getAll.Consignments {
 		log.Println(v)
 	}
