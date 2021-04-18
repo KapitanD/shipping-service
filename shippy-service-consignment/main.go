@@ -3,13 +3,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	// Import the generated protobuf code
 	"context"
 
 	pb "github.com/KapitanD/shipping-service/shippy-service-consignment/proto/consignment"
-	"github.com/micro/go-micro/v2"
+	vesselProto "github.com/KapitanD/shipping-service/shippy-service-vessel/proto/vessel"
+	micro "github.com/micro/go-micro/v2"
 )
 
 type repository interface {
@@ -37,14 +39,30 @@ func (repo *Repository) GetAll() []*pb.Consignment {
 // we defined in our protobuf definition. You can check the interface
 // in the generated code itself for the exact method signatures etc
 // to give you a better idea.
-type consignmentService struct {
-	repo repository
+type vesselService struct {
+	repo         repository
+	vesselClient vesselProto.VesselService
 }
 
 // CreateConsignment - we created just one method on our service,
 // which is a create method, which takes a context and a request as an
 // argument, these are handled by the gRPC server.
-func (s *consignmentService) CreateConsignment(ctx context.Context, req *pb.Consignment, res *pb.Response) error {
+func (s *vesselService) CreateConsignment(ctx context.Context, req *pb.Consignment, res *pb.Response) error {
+	// Here we call a client instance of our vessel service with our consignment weight,
+	// and the amount of containers as the capacity value
+	vesselResponse, err := s.vesselClient.FindAvailable(context.Background(), &vesselProto.Specification{
+		MaxWeight: req.Weight,
+		Capacity:  int32(len(req.Containers)),
+	})
+	log.Printf("Found vessel: %s \n", vesselResponse.Vessel.Name)
+	if err != nil {
+		return err
+	}
+
+	// We set the VesselId as the vessel we got back from our
+	// vessel service
+	req.VesselId = vesselResponse.Vessel.Id
+	log.Printf("Create Consignment: %v", req)
 
 	// Save our consignment
 	consignment, err := s.repo.Create(req)
@@ -59,7 +77,7 @@ func (s *consignmentService) CreateConsignment(ctx context.Context, req *pb.Cons
 	return nil
 }
 
-func (s *consignmentService) GetConsignments(ctx context.Context, req *pb.GetRequest, res *pb.Response) error {
+func (s *vesselService) GetConsignments(ctx context.Context, req *pb.GetRequest, res *pb.Response) error {
 	consignments := s.repo.GetAll()
 	res.Consignments = consignments
 	return nil
@@ -70,20 +88,28 @@ func main() {
 	repo := &Repository{}
 
 	// Create a new service. Optionally include some options here.
+	// Set-up micro instance
 	service := micro.NewService(
-
-		// This name must match the package name given in your protobuf definition
 		micro.Name("shippy.service.consignment"),
 	)
+	log.Println("Service Created")
+	fmt.Println("Print smth")
 
-	// Init will parse the command line flags.
 	service.Init()
 
-	// Register service
-	if err := pb.RegisterShippingServiceHandler(service.Server(), &consignmentService{repo}); err != nil {
+	vesselClient := vesselProto.NewVesselService("shippy.service.vessel",
+		service.Client())
+
+	log.Println("Connected to vessel service")
+
+	// Register handlers
+	if err := pb.RegisterShippingServiceHandler(service.Server(),
+		&vesselService{repo, vesselClient}); err != nil {
+
 		log.Panic(err)
 	}
 
+	log.Println("Register handlers")
 	// Run the server
 	if err := service.Run(); err != nil {
 		log.Panic(err)
