@@ -24,6 +24,6 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 RUN mkdir /app
-COPY --from=builder /app/shippy-service-consigment .
+COPY --from=builder /app/shippy-service-consignment .
 
-CMD ["./shippy-service-consigment"]
+CMD ["./shippy-service-consignment"]

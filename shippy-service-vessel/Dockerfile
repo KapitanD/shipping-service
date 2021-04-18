@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o \
-    shippy-service-vessel
+    shippy-service-vessel *.go
 
 # Run container
 FROM alpine:latest
