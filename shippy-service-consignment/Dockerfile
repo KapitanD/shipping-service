@@ -15,8 +15,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o \
-    shippy-service-consigment
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo \
+  -o shippy-service-consignment *.go
 
 # Run container
 FROM alpine:latest
