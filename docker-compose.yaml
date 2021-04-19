@@ -27,15 +27,29 @@ services:
       DB_HOST: "mongodb://datastore:27017"
 
   user:
+    restart: always
     build: ./shippy-service-user
     ports:
       - 50053:50051
     environment:
       MICRO_ADDRESS: ":50051"
+      DB_HOST: "postgresdb"
+      DB_USER: "admin"
+      DB_PASSWORD: "password"
+      DB_NAME: "postgres"
+    networks: 
+      dev:
+        aliases: 
+          - usersrv
 
   # Commands
   cli:
     build: ./shippy-cli-consignment
+
+  user-cli:
+    build: ./shippy-cli-user
+    networks: 
+      - dev
 
   # Database tier
   datastore:
@@ -52,8 +66,16 @@ services:
 
   database:
     image: postgres:alpine
+    hostname: postgresdb
     environment:
       POSTGRES_PASSWORD: "password"
       POSTGRES_USER: "admin"
     ports:
       - 5432:5432
+    networks: 
+      dev:
+        aliases: 
+          - postgresdb
+
+networks:
+  dev:
